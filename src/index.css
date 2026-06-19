@@ -857,3 +857,230 @@ body {
   0% { transform: scale(1); }
   100% { transform: scale(1.6); }
 }
+
+/* Gemini Model Dropdown and Desktop Stat Box borders */
+.model-selector-container {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
+  gap: 0.5rem;
+  transition: var(--transition);
+}
+
+.model-selector-container:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.model-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  padding-right: 0.25rem;
+}
+
+.model-select option {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+.chat-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background-color: rgba(12, 17, 34, 0.4);
+}
+
+.eval-stat-box {
+  text-align: center;
+}
+
+.eval-stat-box:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+/* Responsive Styles for Mobile Viewports */
+@media (max-width: 767px) {
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+    gap: 0.75rem;
+    height: auto;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  
+  .server-health-indicator {
+    justify-content: flex-start;
+  }
+  
+  .api-key-container, .model-selector-container {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .api-key-input {
+    flex: 1;
+    width: auto;
+  }
+
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+  }
+  
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+  }
+  
+  .workspace-pane {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .tab-headers {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0 0.5rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .tab-headers::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  .chat-container {
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    height: 100%;
+  }
+  
+  .chat-history {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .chat-bubble {
+    max-width: 90%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .chat-input-area {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+  
+  .chat-input {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Slide-out context drawer */
+  .chat-sidebar-drawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 320px;
+    background-color: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+  }
+  
+  .drawer-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 99;
+  }
+
+  .inspector-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    gap: 1rem;
+    height: auto;
+  }
+  
+  .pages-list {
+    max-height: 200px;
+  }
+  
+  .chunks-detail {
+    max-height: 350px;
+    height: auto;
+  }
+
+  .eval-summary-card {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .eval-stat-box {
+    text-align: center;
+    padding: 0.5rem;
+  }
+  
+  .eval-stat-box:not(:last-child) {
+    border-right: none;
+  }
+  
+  .eval-stat-box:nth-child(odd) {
+    border-right: 1px solid var(--border);
+  }
+  
+  .eval-stat-box:nth-child(1),
+  .eval-stat-box:nth-child(2) {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+  }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

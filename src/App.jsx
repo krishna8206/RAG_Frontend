@@ -3,7 +3,7 @@ import {
   Globe, Settings, MessageSquare, BookOpen, Activity, AlertTriangle, 
   Key, Play, CornerDownLeft, RefreshCw, Layers, Sparkles, Check, 
   CheckCircle2, XCircle, Search, ExternalLink, ArrowRight, BookMarked, 
-  Code, Info, ShieldAlert, Cpu
+  Code, Info, ShieldAlert, Cpu, X
 } from 'lucide-react';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://rag-backend-nx26.onrender.com';
 
@@ -125,6 +125,23 @@ function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_rag_apikey') || '');
   const [showApiKey, setShowApiKey] = useState(false);
   const [serverHealth, setServerHealth] = useState({ status: 'unknown', chunksIndexed: 0 });
+  const [chatModel, setChatModel] = useState(() => localStorage.getItem('gemini_chat_model') || 'gemini-1.5-flash');
+  const [isMobile, setIsMobile] = useState(false);
+  const [showContextSidebar, setShowContextSidebar] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleChatModelChange = (val) => {
+    setChatModel(val);
+    localStorage.setItem('gemini_chat_model', val);
+  };
 
   // Crawling Settings & Status
   const [crawlUrl, setCrawlUrl] = useState('https://react.dev/reference/react');
@@ -187,6 +204,113 @@ function App() {
     setApiKey(val);
     localStorage.setItem('gemini_rag_apikey', val);
   };
+
+  const renderCrawlerSidebarContent = () => (
+    <>
+      <div className="panel-card">
+        <div className="panel-title">
+          <Cpu size={18} className="logo-icon" />
+          <span>Polite Crawler Settings</span>
+        </div>
+        
+        <div className="form-group">
+          <label className="form-label">Starting URL</label>
+          <input 
+            type="text" 
+            className="form-input" 
+            value={crawlUrl} 
+            onChange={(e) => setCrawlUrl(e.target.value)}
+            disabled={isCrawling}
+            placeholder="https://example.com/docs"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Max Pages</label>
+            <input 
+              type="number" 
+              className="form-input" 
+              value={maxPages} 
+              onChange={(e) => setMaxPages(parseInt(e.target.value) || 5)}
+              disabled={isCrawling}
+              min="1"
+              max="100"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Max Depth</label>
+            <input 
+              type="number" 
+              className="form-input" 
+              value={maxDepth} 
+              onChange={(e) => setMaxDepth(parseInt(e.target.value) || 1)}
+              disabled={isCrawling}
+              min="1"
+              max="5"
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Delay (ms)</label>
+          <input 
+            type="number" 
+            className="form-input" 
+            value={delay} 
+            onChange={(e) => setDelay(parseInt(e.target.value) || 500)}
+            disabled={isCrawling}
+            step="250"
+            min="0"
+          />
+        </div>
+
+        <button 
+          className="btn" 
+          onClick={handleStartCrawl}
+          disabled={isCrawling || !crawlUrl}
+        >
+          {isCrawling ? (
+            <>
+              <RefreshCw className="pulse" size={16} />
+              <span>Crawling...</span>
+            </>
+          ) : (
+            <>
+              <Play size={16} />
+              <span>Start Scrape & Index</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="panel-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '260px' }}>
+        <div className="panel-title">
+          <Activity size={18} style={{ color: 'var(--accent-cyan)' }} />
+          <span>Crawler Live Console</span>
+        </div>
+        
+        <div className="console-log" ref={logConsoleRef}>
+          {crawlLogs.length === 0 ? (
+            <div className="console-line info">Console ready. Trigger a crawl to stream activity.</div>
+          ) : (
+            crawlLogs.map((log, idx) => (
+              <div key={idx} className={`console-line ${log.type}`}>
+                {log.text}
+              </div>
+            ))
+          )}
+        </div>
+
+        {crawlStats && (
+          <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--accent-green)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+            <span>Crawled: {crawlStats.pagesCrawled} pages</span>
+            <span>Chunks: {crawlStats.chunksCreated}</span>
+          </div>
+        )}
+      </div>
+    </>
+  );
 
   const fetchHealth = async () => {
     try {
@@ -279,7 +403,7 @@ function App() {
       citations: [],
     }]);
 
-    const queryUrl = `${API_BASE_URL}/api/query?q=${encodeURIComponent(originalQuery)}&apiKey=${apiKey}`;
+    const queryUrl = `${API_BASE_URL}/api/query?q=${encodeURIComponent(originalQuery)}&apiKey=${apiKey}&model=${chatModel}`;
     const eventSource = new EventSource(queryUrl);
 
     eventSource.onmessage = (event) => {
@@ -343,7 +467,7 @@ function App() {
     setEvalError('');
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/evaluate`, {
+      const res = await fetch(`${API_BASE_URL}/api/evaluate?model=${chatModel}`, {
         headers: {
           'x-api-key': apiKey
         }
@@ -365,7 +489,7 @@ function App() {
   const handleSandboxSearch = async () => {
     if (!searchSandboxQuery.trim()) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/query?q=${encodeURIComponent(searchSandboxQuery)}&apiKey=${apiKey}`);
+      const res = await fetch(`${API_BASE_URL}/api/query?q=${encodeURIComponent(searchSandboxQuery)}&apiKey=${apiKey}&model=${chatModel}`);
       // Query returns SSE, but since it sends context event first we can read the raw stream for debugging, 
       // or we can simulate a mock request. But wait, we can also query a dedicated search route or extract it.
       // Wait, we can implement client-side local TF-IDF search sandbox or query backend.
@@ -375,7 +499,7 @@ function App() {
       // In server index.js, /api/query returns the context chunks. We can read the first event from it, or we can build 
       // a small dedicated search sandbox endpoint, OR we can just use the `/api/query` stream to parse and display hits!
       // Let's read `/api/query` stream for sandbox search:
-      const queryUrl = `${API_BASE_URL}/api/query?q=${encodeURIComponent(searchSandboxQuery)}&apiKey=${apiKey}`;
+      const queryUrl = `${API_BASE_URL}/api/query?q=${encodeURIComponent(searchSandboxQuery)}&apiKey=${apiKey}&model=${chatModel}`;
       const eventSource = new EventSource(queryUrl);
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -404,7 +528,7 @@ function App() {
         
         <div className="header-actions">
           {/* Health indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          <div className="server-health-indicator" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             <span style={{ 
               width: '8px', 
               height: '8px', 
@@ -413,6 +537,21 @@ function App() {
               boxShadow: serverHealth.status === 'ok' ? '0 0 8px var(--accent-green)' : '0 0 8px var(--accent-red)'
             }} />
             <span>Server: {serverHealth.status} ({serverHealth.chunksIndexed} Chunks)</span>
+          </div>
+
+          {/* Gemini Chat Model selector */}
+          <div className="model-selector-container">
+            <Cpu size={14} className="text-muted" />
+            <select 
+              className="model-select"
+              value={chatModel}
+              onChange={(e) => handleChatModelChange(e.target.value)}
+            >
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Reasoning)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            </select>
           </div>
 
           {/* Gemini API Key input */}
@@ -438,117 +577,26 @@ function App() {
 
       {/* Grid */}
       <div className="dashboard-grid">
-        {/* Left Side: Crawler */}
-        <aside className="sidebar">
-          <div className="panel-card">
-            <div className="panel-title">
-              <Cpu size={18} className="logo-icon" />
-              <span>Polite Crawler Settings</span>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Starting URL</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                value={crawlUrl} 
-                onChange={(e) => setCrawlUrl(e.target.value)}
-                disabled={isCrawling}
-                placeholder="https://example.com/docs"
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Max Pages</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={maxPages} 
-                  onChange={(e) => setMaxPages(parseInt(e.target.value) || 5)}
-                  disabled={isCrawling}
-                  min="1"
-                  max="100"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Max Depth</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={maxDepth} 
-                  onChange={(e) => setMaxDepth(parseInt(e.target.value) || 1)}
-                  disabled={isCrawling}
-                  min="1"
-                  max="5"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Delay (ms)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={delay} 
-                onChange={(e) => setDelay(parseInt(e.target.value) || 500)}
-                disabled={isCrawling}
-                step="250"
-                min="0"
-              />
-            </div>
-
-            <button 
-              className="btn" 
-              onClick={handleStartCrawl}
-              disabled={isCrawling || !crawlUrl}
-            >
-              {isCrawling ? (
-                <>
-                  <RefreshCw className="pulse" size={16} />
-                  <span>Crawling...</span>
-                </>
-              ) : (
-                <>
-                  <Play size={16} />
-                  <span>Start Scrape & Index</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Crawler Console Output */}
-          <div className="panel-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '260px' }}>
-            <div className="panel-title">
-              <Activity size={18} style={{ color: 'var(--accent-cyan)' }} />
-              <span>Crawler Live Console</span>
-            </div>
-            
-            <div className="console-log" ref={logConsoleRef}>
-              {crawlLogs.length === 0 ? (
-                <div className="console-line info">Console ready. Trigger a crawl to stream activity.</div>
-              ) : (
-                crawlLogs.map((log, idx) => (
-                  <div key={idx} className={`console-line ${log.type}`}>
-                    {log.text}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {crawlStats && (
-              <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--accent-green)', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
-                <span>Crawled: {crawlStats.pagesCrawled} pages</span>
-                <span>Chunks: {crawlStats.chunksCreated}</span>
-              </div>
-            )}
-          </div>
-        </aside>
+        {/* Left Side: Crawler (Desktop only) */}
+        {!isMobile && (
+          <aside className="sidebar">
+            {renderCrawlerSidebarContent()}
+          </aside>
+        )}
 
         {/* Right Side: Tab workspace */}
         <main className="workspace-pane">
           {/* Tab Headers */}
           <nav className="tab-headers">
+            {isMobile && (
+              <button 
+                className={`tab-btn ${activeTab === 'crawler' ? 'active' : ''}`}
+                onClick={() => setActiveTab('crawler')}
+              >
+                <Settings size={16} />
+                <span>Crawler</span>
+              </button>
+            )}
             <button 
               className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
               onClick={() => setActiveTab('chat')}
@@ -575,11 +623,35 @@ function App() {
           {/* Tab Content */}
           <div className="tab-content">
             
+            {/* TAB 0: Crawler (Mobile only) */}
+            {isMobile && activeTab === 'crawler' && (
+              <div className="sidebar" style={{ borderRight: 'none', backgroundColor: 'transparent', padding: 0, height: '100%', overflowY: 'auto' }}>
+                {renderCrawlerSidebarContent()}
+              </div>
+            )}
+
             {/* TAB 1: Grounded Chat */}
             {activeTab === 'chat' && (
               <div className="chat-container">
                 {/* Chat Panel */}
                 <div className="chat-messages-box">
+                  <div className="chat-header-bar">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <MessageSquare size={16} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>Site-Grounded Assistant</span>
+                    </div>
+                    {isMobile && (
+                      <button 
+                        className="btn-secondary" 
+                        style={{ border: 'none', padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                        onClick={() => setShowContextSidebar(!showContextSidebar)}
+                      >
+                        <Layers size={12} />
+                        <span>Sources ({currentContexts.length})</span>
+                      </button>
+                    )}
+                  </div>
+
                   <div className="chat-history">
                     {chatHistory.map((msg, idx) => (
                       <div key={idx} className={`chat-bubble ${msg.sender} ${msg.text.startsWith('Error') ? 'error' : ''}`}>
@@ -642,31 +714,52 @@ function App() {
                 </div>
 
                 {/* Context Sidebar */}
-                <div className="chat-sidebar">
-                  <div className="panel-title" style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                    <Layers size={14} />
-                    <span>Retrieved Context (Top-K)</span>
-                  </div>
-                  
-                  {currentContexts.length === 0 ? (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>
-                      Context chunks retrieved for the last Q&A query will be displayed here for transparency.
-                    </div>
-                  ) : (
-                    currentContexts.map((context, cidx) => (
-                      <div className="context-card" key={cidx}>
-                        <div className="context-card-header">
-                          <span className="context-card-title" title={context.title}>{context.title}</span>
-                          <span className="context-card-score">{(context.score || 0).toFixed(3)}</span>
-                        </div>
-                        <div className="context-card-text" title={context.text}>"{context.text}"</div>
-                        <a href={context.url} target="_blank" rel="noopener noreferrer" className="context-card-link" title={context.url}>
-                          {context.url}
-                        </a>
+                {(!isMobile || showContextSidebar) && (
+                  <div className={isMobile ? "chat-sidebar-drawer" : "chat-sidebar"}>
+                    {isMobile && (
+                      <div className="drawer-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Layers size={14} />
+                          Retrieved Context
+                        </span>
+                        <button 
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          onClick={() => setShowContextSidebar(false)}
+                        >
+                          <X size={18} />
+                        </button>
                       </div>
-                    ))
-                  )}
-                </div>
+                    )}
+                    {!isMobile && (
+                      <div className="panel-title" style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                        <Layers size={14} />
+                        <span>Retrieved Context (Top-K)</span>
+                      </div>
+                    )}
+                    
+                    {currentContexts.length === 0 ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>
+                        Context chunks retrieved for the last Q&A query will be displayed here for transparency.
+                      </div>
+                    ) : (
+                      currentContexts.map((context, cidx) => (
+                        <div className="context-card" key={cidx}>
+                          <div className="context-card-header">
+                            <span className="context-card-title" title={context.title}>{context.title}</span>
+                            <span className="context-card-score">{(context.score || 0).toFixed(3)}</span>
+                          </div>
+                          <div className="context-card-text" title={context.text}>"{context.text}"</div>
+                          <a href={context.url} target="_blank" rel="noopener noreferrer" className="context-card-link" title={context.url}>
+                            {context.url}
+                          </a>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+                {isMobile && showContextSidebar && (
+                  <div className="drawer-backdrop" onClick={() => setShowContextSidebar(false)} />
+                )}
               </div>
             )}
 
@@ -825,21 +918,21 @@ function App() {
                   <>
                     {/* Summary stats */}
                     <div className="eval-summary-card">
-                      <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                      <div className="eval-stat-box">
                         <div className="stat-value" style={{ color: evalReport.stats.recallRate > 80 ? 'var(--accent-green)' : 'var(--primary)' }}>
                           {evalReport.stats.recallRate}%
                         </div>
                         <div className="stat-label">Retrieval Recall</div>
                       </div>
-                      <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                      <div className="eval-stat-box">
                         <div className="stat-value">{evalReport.stats.recalledCases} / {evalReport.stats.totalTestCases}</div>
                         <div className="stat-label">Successful Recalls</div>
                       </div>
-                      <div style={{ textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+                      <div className="eval-stat-box">
                         <div className="stat-value" style={{ fontSize: '1.1rem', marginTop: '0.4rem' }}>{evalReport.stats.mode}</div>
                         <div className="stat-label" style={{ marginTop: '0.6rem' }}>Search Mode</div>
                       </div>
-                      <div style={{ textAlign: 'center' }}>
+                      <div className="eval-stat-box">
                         <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>Top-4 (K=4)</div>
                         <div className="stat-label">Rank Context Window</div>
                       </div>
