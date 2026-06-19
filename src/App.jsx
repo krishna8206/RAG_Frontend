@@ -181,10 +181,17 @@ function App() {
   const chatEndRef = useRef(null);
   const logConsoleRef = useRef(null);
 
-  // Check backend health on boot
+  // Check backend health on boot and poll every 10s to handle Render.com free tier cold starts
   useEffect(() => {
     fetchHealth();
     fetchInspectorStats();
+
+    const interval = setInterval(() => {
+      fetchHealth();
+      fetchInspectorStats();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Scroll to bottom of chat when new message arrives
@@ -536,7 +543,14 @@ function App() {
               backgroundColor: serverHealth.status === 'ok' ? 'var(--accent-green)' : 'var(--accent-red)',
               boxShadow: serverHealth.status === 'ok' ? '0 0 8px var(--accent-green)' : '0 0 8px var(--accent-red)'
             }} />
-            <span>Server: {serverHealth.status} ({serverHealth.chunksIndexed} Chunks)</span>
+            <span>
+              Server: {serverHealth.status === 'ok' ? 'Online' : 'Offline'} ({serverHealth.chunksIndexed} Chunks)
+              {serverHealth.status !== 'ok' && (
+                <span className="pulse" style={{ color: 'var(--accent-red)', marginLeft: '0.4rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                  (Waking up backend...)
+                </span>
+              )}
+            </span>
           </div>
 
           {/* Gemini Chat Model selector */}
