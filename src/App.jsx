@@ -5,7 +5,24 @@ import {
   CheckCircle2, XCircle, Search, ExternalLink, ArrowRight, BookMarked, 
   Code, Info, ShieldAlert, Cpu, X
 } from 'lucide-react';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://rag-backend-nx26.onrender.com';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
+  if (isLocalhost) {
+    return envUrl || 'http://localhost:5000';
+  } else {
+    // If deployed (e.g., on Render), use the deployed backend URL.
+    // If VITE_API_BASE_URL is localhost (baked in from the local .env during build), ignore it.
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl;
+    }
+    return 'https://rag-backend-nx26.onrender.com';
+  }
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 
 // Custom Markdown Inline Parser Helpers
 const renderInlineMarkdown = (text) => {
